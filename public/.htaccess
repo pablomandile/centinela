@@ -1,0 +1,51 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Handle X-XSRF-Token Header
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+<IfModule mod_mime.c>
+    # Sin esto muchos hostings sirven el manifest como text/plain. Chrome lo tolera
+    # —se instala igual, comprobado— pero incumple la spec y otros navegadores lo
+    # pueden rechazar.
+    AddType application/manifest+json .webmanifest
+    AddType text/javascript .js
+</IfModule>
+
+<IfModule mod_headers.c>
+    #
+    # El CDN de Hostinger cachea los estáticos siete días, y estos dos archivos son
+    # justamente los que le avisan al navegador que hay algo nuevo:
+    #
+    # - `sw.js`: el navegador chequea actualizaciones del service worker pegándole a
+    #   esta URL. Si el borde devuelve el viejo, ninguna actualización llega hasta
+    #   que expire —y como el service worker controla las demás cachés, congela todo
+    #   lo demás—.
+    # - `manifest.webmanifest`: lo mismo para el ícono y el nombre de la app.
+    #
+    # Ver el skill `adaptar-a-pwa`, sección 7.
+    #
+    <FilesMatch "^(sw\.js|manifest\.webmanifest|offline\.html)$">
+        Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+    </FilesMatch>
+</IfModule>
