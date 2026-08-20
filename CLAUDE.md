@@ -122,6 +122,25 @@ Las llena `centinela:detectar-perfil`, que **por defecto solo informa**: guardar
 silencio las banderas de dieciséis proyectos cambia qué se audita en cada uno, y eso se
 notaría recién cuando algo dejara de avisar.
 
+### El hosting compartido estrangula las ráfagas
+
+Medido en producción el primer día: **una sonda sola tarda 30 ms desde el server; el
+run completo de 12 proyectos (~100 pedidos en un mismo proceso) reporta 5-9 segundos y
+algún pedido muere con "Connection reset by peer"**. Los sitios estaban perfectos —
+`curl` desde el mismo server contestaba en 20 ms—: lo que se estrangula es el proceso
+PHP de la cuenta.
+
+Dos consecuencias que ya están resueltas y no hay que volver a pensar:
+
+1. **Las auditorías van corridas entre proyectos** (`Proyecto::toca()` suma un desfasaje
+   derivado del id). Sin eso, después de una corrida completa vencen todas en el mismo
+   tick y la ráfaga vuelve.
+2. **La latencia de un run forzado no es comparable** con la de un tick normal. El
+   umbral se puede subir por `.env` (`CENTINELA_LATENCIA_ADVERTENCIA`) sin desplegar.
+
+O sea: si el tablero muestra de golpe media docena de "tarda 8 segundos", mirá primero
+si fue un `--forzar` antes de buscar el problema en los sitios.
+
 ### Tres trampas que ya costaron un rato
 
 1. **`X-Inertia-Version` en la respuesta lo agregó inertia-laravel 3.** La mitad de los

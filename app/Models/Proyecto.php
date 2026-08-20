@@ -218,6 +218,14 @@ class Proyecto extends Model
      * La disponibilidad respeta `intervalo_minutos`; el resto va una vez por día,
      * porque solo cambia cuando hubo un deploy y pegarle cada cuarto de hora a
      * doce sitios para mirar lo mismo gasta el rate limit sin ganar nada.
+     *
+     * **Las auditorías van corridas entre proyectos.** Sin eso, después de una
+     * corrida completa todas quedan alineadas y al día siguiente vencen en el mismo
+     * tick: ~90 pedidos en un solo proceso. Medido en el hosting compartido, esa
+     * ráfaga estrangula el proceso —las latencias se van de 30 ms a 5-9 segundos y
+     * algún pedido llega a morir con "Connection reset by peer"—, o sea que
+     * Centinela se inventaría lentitud y hasta una caída que no existe. Corriéndolas
+     * un rato por proyecto, cada tick queda liviano.
      */
     public function toca(TipoChequeo $tipo, ?CarbonInterface $ahora = null): bool
     {
@@ -232,8 +240,18 @@ class Proyecto extends Model
             return true;
         }
 
-        $minutos = $tipo->esFrecuente() ? $this->intervalo_minutos : 60 * 24;
+        if ($tipo->esFrecuente()) {
+            return $ultimo->ejecutado_at
+                ->addMinutes($this->intervalo_minutos)
+                ->lessThanOrEqualTo($ahora);
+        }
 
-        return $ultimo->ejecutado_at->addMinutes($minutos)->lessThanOrEqualTo($ahora);
+        // Un día, más un desfasaje propio de cada proyecto (hasta 6 h) derivado de su
+        // id: es determinístico, así que no se mueve entre corridas.
+        $desfasaje = ($this->id % 12) * 30;
+
+        return $ultimo->ejecutado_at
+            ->addMinutes(60 * 24 + $desfasaje)
+            ->lessThanOrEqualTo($ahora);
     }
 }

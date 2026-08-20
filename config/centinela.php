@@ -46,14 +46,22 @@ return [
 
     'umbrales' => [
         // Segundos de espera antes de dar por caído un sitio.
-        'timeout' => 15,
+        'timeout' => (int) env('CENTINELA_TIMEOUT', 15),
 
         // Redirects a seguir. La raíz de varios proyectos contesta 302 a /login:
         // no seguirlos sería marcar como caído un sitio sano.
         'redirects' => 5,
 
-        // Latencia (ms) que pasa de "ok" a "advertencia".
-        'latencia_advertencia' => 3000,
+        /*
+         * Latencia (ms) que pasa de "ok" a "advertencia".
+         *
+         * Se puede subir por .env sin desplegar, porque el número honesto depende de
+         * dónde corre Centinela: medido desde el propio hosting compartido, un run
+         * con muchos pedidos seguidos se estrangula y las latencias se van a 5-9
+         * segundos aunque los sitios contesten en 30 ms. Ver la nota de
+         * `Proyecto::toca()`.
+         */
+        'latencia_advertencia' => (int) env('CENTINELA_LATENCIA_ADVERTENCIA', 3000),
 
         // Días de vida del certificado TLS que disparan advertencia y falla.
         'certificado_advertencia' => 21,

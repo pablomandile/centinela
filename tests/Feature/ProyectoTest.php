@@ -110,7 +110,32 @@ it('corre las auditorías una vez por día, no cada cuarto de hora', function ()
     ]);
 
     expect($proyecto->toca(TipoChequeo::CacheInertia))->toBeFalse()
-        ->and($proyecto->toca(TipoChequeo::CacheInertia, now()->addDay()))->toBeTrue();
+        // Un día más su desfasaje: a las 30 horas ya le tocó a cualquier proyecto.
+        ->and($proyecto->toca(TipoChequeo::CacheInertia, now()->addHours(30)))->toBeTrue();
+});
+
+it('corre las auditorías de cada proyecto a distinta hora', function () {
+    /*
+     * Sin el desfasaje, después de una corrida completa todas las auditorías quedan
+     * alineadas y al día siguiente vencen en el mismo tick: ~90 pedidos en un solo
+     * proceso. En el hosting compartido esa ráfaga estrangula el proceso y Centinela
+     * se inventa lentitud —y hasta una caída— que no existe.
+     */
+    $hace25Horas = now()->subHours(25);
+
+    $tocaronDistinto = collect(range(1, 12))
+        ->map(function (int $i) use ($hace25Horas) {
+            $proyecto = Proyecto::factory()->create();
+            Chequeo::factory()->for($proyecto)->de(TipoChequeo::CacheInertia)->create([
+                'ejecutado_at' => $hace25Horas,
+            ]);
+
+            return $proyecto->toca(TipoChequeo::CacheInertia);
+        })
+        ->unique();
+
+    // A 25 horas del último chequeo, a algunos les toca y a otros todavía no.
+    expect($tocaronDistinto->count())->toBe(2);
 });
 
 it('los scopes filtran activos y ordenan', function () {
