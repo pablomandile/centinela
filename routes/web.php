@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AcercaController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\DocumentoController;
 use App\Http\Controllers\PdfController;
@@ -83,6 +84,9 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::get('proyectos/{proyecto}/dossier', [PdfController::class, 'dossier'])->name('proyectos.dossier');
+
+    // Qué es esto y quién lo hizo.
+    Route::get('acerca', AcercaController::class)->name('acerca');
 });
 
 require __DIR__.'/settings.php';

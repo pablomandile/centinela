@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { FileText, FolderGit2, LayoutGrid } from '@lucide/vue';
+import { FileText, FolderGit2, Info, LayoutGrid } from '@lucide/vue';
 import { onUnmounted } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import BotonInstalar from '@/components/BotonInstalar.vue';
@@ -35,6 +35,11 @@ const mainNavItems: NavItem[] = [
         title: 'Documentos',
         href: '/documentos',
         icon: FileText,
+    },
+    {
+        title: 'Acerca de',
+        href: '/acerca',
+        icon: Info,
     },
 ];
 
