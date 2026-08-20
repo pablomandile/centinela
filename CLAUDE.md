@@ -303,3 +303,14 @@ pueden pasar y ESLint no. `composer ci:check` los corre todos.
 Hostinger compartido, subdominio `centinela.pablomandile.com.ar`, carpeta remota
 `centinela`. El server **no tiene Node**: se compila local y se copia `public/build`.
 Detalle completo en [docs/deploy.md](docs/deploy.md) y en el skill `deploy-hostinger`.
+
+- **Producción cachea las rutas.** Un deploy que agrega una ruta se termina con
+  `artisan route:cache`; sin eso la ruta contesta **404** aunque el controlador y el
+  `routes/web.php` nuevos ya estén en el server, y nada en la respuesta lo explica.
+  Por eso también **no puede haber rutas con closure**: `route:cache` se niega a
+  compilarlas.
+- **El pre-vuelo del script de deploy es ciego en este proyecto.** Busca
+  `__name:"Componente"` con comillas dobles y el minificador de Vite 8 emite
+  ``__name:`Componente` `` con backticks, así que la comparación sale vacía y siempre
+  dice "producción no tiene componentes ajenos al repo". Para que sirva hay que correr
+  el `comm` a mano aceptando las dos comillas.

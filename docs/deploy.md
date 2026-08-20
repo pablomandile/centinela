@@ -126,6 +126,25 @@ ssh agendaflex "/opt/alt/php84/usr/bin/php ~/domains/pablomandile.com.ar/centine
 Sin esto la app sigue leyendo la configuración vieja. Es la causa más común de "puse
 las credenciales de Google y el botón no aparece".
 
+### Cada vez que se agrega o se cambia una ruta
+
+```bash
+ssh agendaflex "/opt/alt/php84/usr/bin/php ~/domains/pablomandile.com.ar/centinela/artisan route:cache"
+```
+
+**Producción tiene la caché de rutas** (`bootstrap/cache/routes-v7.php`, que dejó el
+`optimize` de la instalación). Mientras ese archivo existe, la tabla de rutas está
+congelada: se puede subir el controlador y el `routes/web.php` nuevos, verlos en el
+server con el `grep`, y la ruta **contesta 404 igual**. Pasó con `/acerca`: los
+archivos estaban, el bundle era el nuevo, y el 404 no lo explicaba nada.
+
+Dos consecuencias:
+
+- Un deploy que agrega rutas se termina con `route:cache`, no con `config:cache`.
+- **No puede haber rutas con closure.** `route:cache` corta con
+  `Your route files contain a closure`, y el arreglo urgente —borrar el archivo de
+  caché— deja producción sin ese optimizado y sin que quede registrado por qué.
+
 ## El cron
 
 hPanel → Avanzado → Cron Jobs. **Uno solo**, cada minuto:
