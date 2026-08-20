@@ -12,6 +12,37 @@ Herramienta personal con dos módulos:
 
 Instalable como app (PWA) en escritorio y celular. Se entra con Google.
 
+En producción: **https://centinela.pablomandile.com.ar**
+
+## Con qué está hecho
+
+| Capa | Tecnología |
+|---|---|
+| Backend | **Laravel 13** sobre **PHP 8.4** |
+| Base | **MySQL 8** (los tests corren en sqlite en memoria) |
+| Frontend | **Inertia 3** + **Vue 3** con **TypeScript**, compilado con **Vite 8** |
+| Estilos | **Tailwind 4** y componentes **shadcn-vue** (sobre reka-ui) |
+| Rutas tipadas | **Wayfinder** (no Ziggy) |
+| Autenticación | **Fortify** recortado al login + **Socialite** para Google |
+| Gráficos | **Chart.js** con vue-chartjs |
+| Fechas | **Carbon** en el backend (todo en UTC), **dayjs** en el navegador |
+| Markdown | **league/commonmark** vía `Str::markdown()`, que ya viene con Laravel |
+| PDF | **dompdf** (`barryvdh/laravel-dompdf`) |
+| Tests | **Pest 4** sobre PHPUnit 12 |
+| Análisis estático | **PHPStan/Larastan nivel 7**, **Pint**, **ESLint**, **Prettier**, **vue-tsc** |
+| PWA | manifest, service worker y botón de instalar propios, sin librería |
+| Hosting | Hostinger compartido (Apache/LiteSpeed), deploy por SSH |
+
+Es el mismo stack que **huella**, que es el proyecto de referencia de esta cuenta: así
+lo que se aprende en uno sirve en el otro.
+
+Dos decisiones que explican varias cosas del código:
+
+- **Sin cola.** En hosting compartido un worker se cae en silencio, así que los mails
+  los manda el propio comando del scheduler. Un solo cron por minuto alcanza para todo.
+- **Sin Node en el servidor.** Se compila en la máquina de desarrollo y se copia
+  `public/build`.
+
 ## Arrancar
 
 ```bash
