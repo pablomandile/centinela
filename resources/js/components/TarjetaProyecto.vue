@@ -10,7 +10,7 @@ import type { ProyectoDelTablero } from '@/types/centinela';
 
 const props = defineProps<{ proyecto: ProyectoDelTablero }>();
 
-const { haceCuanto, fechaYHora } = useFecha();
+const { haceCuanto, enCuanto, fechaYHora } = useFecha();
 
 /**
  * El estado de la tarjeta entera: el peor de sus chequeos, salvo que el proyecto
@@ -153,12 +153,22 @@ const problemas = computed(() =>
                     </span>
                 </p>
 
-                <span
-                    class="text-xs text-muted-foreground"
-                    :title="fechaYHora(ultimoChequeo)"
-                >
-                    {{ haceCuanto(ultimoChequeo) }}
-                </span>
+                <div class="text-right text-xs text-muted-foreground">
+                    <p :title="fechaYHora(ultimoChequeo)">
+                        {{ haceCuanto(ultimoChequeo) }}
+                    </p>
+                    <!--
+                        Cuándo vuelve a mirarse. Va redondeado al tick del
+                        scheduler, así que es un "no antes de", no un promedio: el
+                        backend ya no promete un minuto que el cron no puede cumplir.
+                    -->
+                    <p
+                        v-if="props.proyecto.proximo"
+                        :title="`Próximo chequeo: ${fechaYHora(props.proyecto.proximo)}`"
+                    >
+                        vuelve {{ enCuanto(props.proyecto.proximo) }}
+                    </p>
+                </div>
             </div>
 
             <ul v-if="problemas.length" class="space-y-1">

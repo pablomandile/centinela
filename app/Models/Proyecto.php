@@ -229,8 +229,6 @@ class Proyecto extends Model
      */
     public function toca(TipoChequeo $tipo, ?CarbonInterface $ahora = null): bool
     {
-        $ahora ??= now();
-
         $ultimo = $this->chequeos()
             ->where('tipo', $tipo)
             ->orderByDesc('ejecutado_at')
@@ -240,18 +238,52 @@ class Proyecto extends Model
             return true;
         }
 
+        return $this->vencimiento($tipo, $ultimo->ejecutado_at)
+            ->lessThanOrEqualTo($ahora ?? now());
+    }
+
+    /**
+     * Cuándo queda vencido un chequeo de este tipo, dado el anterior.
+     *
+     * Es la fórmula sola, sin consultar nada: la usan `toca()` —que ya trae el
+     * último chequeo— y el tablero, que los tiene todos en memoria y no puede
+     * permitirse una consulta por tarjeta.
+     */
+    public function vencimiento(TipoChequeo $tipo, CarbonInterface $ultimo): CarbonInterface
+    {
         if ($tipo->esFrecuente()) {
-            return $ultimo->ejecutado_at
-                ->addMinutes($this->intervalo_minutos)
-                ->lessThanOrEqualTo($ahora);
+            return $ultimo->addMinutes($this->intervalo_minutos);
         }
 
         // Un día, más un desfasaje propio de cada proyecto (hasta 6 h) derivado de su
         // id: es determinístico, así que no se mueve entre corridas.
-        $desfasaje = ($this->id % 12) * 30;
+        return $ultimo->addMinutes(60 * 24 + ($this->id % 12) * 30);
+    }
 
-        return $ultimo->ejecutado_at
-            ->addMinutes(60 * 24 + $desfasaje)
-            ->lessThanOrEqualTo($ahora);
+    /**
+     * Cuándo va a volver a chequearse esto de verdad.
+     *
+     * Dos cosas que no son el vencimiento:
+     *
+     * 1. **Se redondea al próximo tick del scheduler.** Un chequeo que vence 10:02
+     *    no corre hasta las 10:05, así que prometer "en 2 minutos" sería mentira
+     *    tres de cada cinco veces.
+     * 2. **Un vencimiento ya pasado no es "hace un rato", es el próximo tick.** Le
+     *    toca, todavía no corrió, y lo que uno quiere saber es cuándo va a pasar.
+     *
+     * `$ultimo` en null es un proyecto sin chequear: le toca en el próximo tick.
+     */
+    public function proximoChequeo(
+        TipoChequeo $tipo,
+        ?CarbonInterface $ultimo,
+        ?CarbonInterface $ahora = null,
+    ): CarbonInterface {
+        $ahora ??= now();
+
+        $vencimiento = $ultimo === null ? $ahora : $this->vencimiento($tipo, $ultimo);
+
+        return $vencimiento->max($ahora)->ceilMinutes(
+            (int) config('centinela.umbrales.cadencia_scheduler'),
+        );
     }
 }

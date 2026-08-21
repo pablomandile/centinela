@@ -71,6 +71,19 @@ return [
         // cualquier hipo de red.
         'fallos_para_incidente' => 2,
 
+        /*
+         * Cada cuántos minutos despierta el scheduler a `centinela:chequear`.
+         *
+         * No cambia cuándo le toca a cada proyecto —eso es `intervalo_minutos`—,
+         * pero sí cuándo puede pasar algo: un chequeo que vence a las 10:02 no
+         * corre hasta las 10:05. Está acá porque el tablero lo necesita para no
+         * prometer un "próximo chequeo" que el scheduler no puede cumplir.
+         *
+         * Si se cambia, hay que cambiar también `routes/console.php`. Lo ata el
+         * test "la cadencia del scheduler es la que dice la config".
+         */
+        'cadencia_scheduler' => 5,
+
         // Días de historial de chequeos que se conservan.
         'retencion_dias' => 90,
     ],

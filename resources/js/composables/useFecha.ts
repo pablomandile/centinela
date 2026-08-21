@@ -22,9 +22,19 @@ export function useFecha() {
     const fechaYHora = (iso: string | null | undefined): string =>
         iso ? dayjs.utc(iso).local().format('D [de] MMMM, HH:mm') : '—';
 
+    /**
+     * "en 12 minutos", para una fecha futura.
+     *
+     * Es el mismo `fromNow()` que `haceCuanto` —dayjs distingue solo el signo—,
+     * pero con su propio nombre: en la plantilla, `enCuanto(proximo)` dice qué
+     * significa el número y `haceCuanto(proximo)` se leería como un error.
+     */
+    const enCuanto = (iso: string | null | undefined): string =>
+        iso ? dayjs.utc(iso).local().fromNow() : '—';
+
     /** "22:36" */
     const hora = (iso: string | null | undefined): string =>
         iso ? dayjs.utc(iso).local().format('HH:mm') : '—';
 
-    return { haceCuanto, fechaYHora, hora };
+    return { haceCuanto, enCuanto, fechaYHora, hora };
 }

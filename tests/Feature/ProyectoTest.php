@@ -4,6 +4,8 @@ use App\Enums\EstadoChequeo;
 use App\Enums\TipoChequeo;
 use App\Models\Chequeo;
 use App\Models\Proyecto;
+use Carbon\CarbonImmutable;
+use Illuminate\Console\Scheduling\Schedule;
 
 it('deriva el slug del nombre cuando no se le pasa uno', function () {
     $proyecto = Proyecto::create([
@@ -144,4 +146,66 @@ it('los scopes filtran activos y ordenan', function () {
     Proyecto::factory()->inactivo()->create(['nombre' => 'Dormido', 'orden' => 2]);
 
     expect(Proyecto::activos()->ordenados()->pluck('nombre')->all())->toBe(['Zeta', 'Alfa']);
+});
+
+it('el próximo chequeo se redondea al tick del scheduler', function () {
+    /*
+     * El scheduler despierta cada cinco minutos, así que un chequeo que vence 10:02
+     * no corre hasta las 10:05. Prometer "en dos minutos" sería mentira tres de cada
+     * cinco veces.
+     */
+    config(['centinela.umbrales.cadencia_scheduler' => 5]);
+
+    $proyecto = Proyecto::factory()->create(['intervalo_minutos' => 15]);
+
+    $proximo = $proyecto->proximoChequeo(
+        TipoChequeo::Disponibilidad,
+        CarbonImmutable::parse('2026-08-21 09:47:00'),
+        CarbonImmutable::parse('2026-08-21 09:50:00'),
+    );
+
+    // Vence 10:02 y el tick siguiente es 10:05.
+    expect($proximo->toDateTimeString())->toBe('2026-08-21 10:05:00');
+});
+
+it('un vencimiento ya pasado es el próximo tick, no una fecha vieja', function () {
+    // Le toca, todavía no corrió: lo que se quiere saber es cuándo va a pasar.
+    config(['centinela.umbrales.cadencia_scheduler' => 5]);
+
+    $proyecto = Proyecto::factory()->create(['intervalo_minutos' => 15]);
+
+    $proximo = $proyecto->proximoChequeo(
+        TipoChequeo::Disponibilidad,
+        CarbonImmutable::parse('2026-08-21 08:00:00'),
+        CarbonImmutable::parse('2026-08-21 09:51:00'),
+    );
+
+    expect($proximo->toDateTimeString())->toBe('2026-08-21 09:55:00');
+});
+
+it('un proyecto sin chequeos se chequea en el próximo tick', function () {
+    config(['centinela.umbrales.cadencia_scheduler' => 5]);
+
+    $proximo = Proyecto::factory()->create()->proximoChequeo(
+        TipoChequeo::Disponibilidad,
+        null,
+        CarbonImmutable::parse('2026-08-21 09:51:00'),
+    );
+
+    expect($proximo->toDateTimeString())->toBe('2026-08-21 09:55:00');
+});
+
+it('la cadencia del scheduler es la que dice la config', function () {
+    /*
+     * El tablero calcula el "vuelve en X" con `centinela.umbrales.cadencia_scheduler`,
+     * pero el que manda de verdad es `routes/console.php`. Si se cambia uno solo, el
+     * tablero promete un horario que el cron no cumple y nada lo delata.
+     */
+    $cadencia = (int) config('centinela.umbrales.cadencia_scheduler');
+
+    $chequear = collect(app(Schedule::class)->events())
+        ->first(fn ($evento) => str_contains($evento->command ?? '', 'centinela:chequear'));
+
+    expect($chequear)->not->toBeNull()
+        ->and($chequear->expression)->toBe("*/{$cadencia} * * * *");
 });

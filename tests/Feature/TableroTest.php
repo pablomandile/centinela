@@ -6,6 +6,7 @@ use App\Models\Chequeo;
 use App\Models\Incidente;
 use App\Models\Proyecto;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
 
 it('pide sesión', function () {
@@ -30,6 +31,28 @@ it('muestra cada proyecto con el último chequeo de cada tipo', function () {
             ->where('proyectos.0.nombre', 'Huella')
             ->where('resumen.proyectos', 1),
         );
+});
+
+it('dice cuándo vuelve a chequear, y nada si el proyecto está inactivo', function () {
+    $activo = Proyecto::factory()->create(['slug' => 'activo', 'orden' => 0]);
+    Chequeo::factory()->for($activo)->create(['ejecutado_at' => now()->subMinutes(5)]);
+
+    Proyecto::factory()->inactivo()->create(['slug' => 'dormido', 'orden' => 1]);
+
+    $pagina = $this->actingAs(User::factory()->create())
+        ->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $pagina) => $pagina
+            ->where('proyectos.0.slug', 'activo')
+            // Un proyecto inactivo no tiene próximo chequeo, y eso no es lo mismo
+            // que no saberlo: la tarjeta dice "no se chequea".
+            ->where('proyectos.1.proximo', null),
+        );
+
+    $proximo = $pagina->viewData('page')['props']['proyectos'][0]['proximo'];
+
+    expect($proximo)->not->toBeNull()
+        ->and(CarbonImmutable::parse($proximo)->isAfter(now()))->toBeTrue();
 });
 
 it('cuenta los incidentes abiertos y no los cerrados', function () {

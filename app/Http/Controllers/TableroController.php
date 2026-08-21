@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TipoChequeo;
 use App\Models\Chequeo;
 use App\Models\Incidente;
 use App\Models\Proyecto;
@@ -28,17 +29,37 @@ class TableroController extends Controller
         $abiertos = $this->incidentesAbiertos();
 
         return Inertia::render('Tablero', [
-            'proyectos' => $proyectos->map(fn (Proyecto $proyecto) => [
-                'slug' => $proyecto->slug,
-                'nombre' => $proyecto->nombre,
-                'url' => $proyecto->url,
-                'activo' => $proyecto->activo,
-                'tecnologia' => $proyecto->etiquetaTecnica(),
-                'chequeos' => $ultimos->get($proyecto->id, collect())
-                    ->map(fn (Chequeo $chequeo) => $this->comoSeVe($chequeo))
-                    ->values(),
-                'incidentes' => $abiertos->get($proyecto->id, 0),
-            ])->values(),
+            'proyectos' => $proyectos->map(function (Proyecto $proyecto) use ($ultimos, $abiertos) {
+                $chequeos = $ultimos->get($proyecto->id, collect());
+
+                return [
+                    'slug' => $proyecto->slug,
+                    'nombre' => $proyecto->nombre,
+                    'url' => $proyecto->url,
+                    'activo' => $proyecto->activo,
+                    'tecnologia' => $proyecto->etiquetaTecnica(),
+                    'chequeos' => $chequeos
+                        ->map(fn (Chequeo $chequeo) => $this->comoSeVe($chequeo))
+                        ->values(),
+                    /*
+                     * Cuándo vuelve a mirarse la salud del sitio.
+                     *
+                     * Se calcula con el chequeo que ya está en memoria y no
+                     * preguntándole al proyecto: `toca()` consulta, y una consulta
+                     * por tarjeta son dieciséis más por pantalla.
+                     *
+                     * Un proyecto inactivo no tiene próximo chequeo, y eso es
+                     * distinto de "no lo sabemos": la tarjeta dice "no se chequea".
+                     */
+                    'proximo' => $proyecto->activo
+                        ? $proyecto->proximoChequeo(
+                            TipoChequeo::Disponibilidad,
+                            $chequeos->firstWhere('tipo', TipoChequeo::Disponibilidad)?->ejecutado_at,
+                        )->toIso8601String()
+                        : null,
+                    'incidentes' => $abiertos->get($proyecto->id, 0),
+                ];
+            })->values(),
             'resumen' => [
                 'proyectos' => $proyectos->where('activo', true)->count(),
                 'incidentes' => $abiertos->sum(),

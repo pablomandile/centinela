@@ -25,6 +25,8 @@ export type ProyectoDelTablero = {
     activo: boolean;
     tecnologia: string;
     chequeos: ChequeoResumido[];
+    /** Cuándo vuelve a chequearse la salud. Null en un proyecto inactivo. */
+    proximo: string | null;
     incidentes: number;
 };
 
