@@ -47,34 +47,50 @@ const ordenados = computed(() => {
     <Head title="Panel" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-            <p class="text-sm text-muted-foreground">
-                {{ props.resumen.proyectos }}
-                {{
-                    props.resumen.proyectos === 1
-                        ? 'proyecto activo'
-                        : 'proyectos activos'
-                }}
-            </p>
-
-            <p
-                v-if="props.resumen.incidentes"
-                class="text-sm font-medium text-red-600 dark:text-red-400"
+        <!--
+            El resumen en píldoras y no en un párrafo: con el mismo lenguaje de
+            color que las tarjetas, y los números en `tabular-nums` para que no
+            bailen al actualizarse.
+        -->
+        <div class="flex flex-wrap items-center gap-2">
+            <span
+                class="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-sm"
             >
-                {{ props.resumen.incidentes }}
+                <span class="font-semibold tabular-nums">{{
+                    props.resumen.proyectos
+                }}</span>
+                <span class="text-muted-foreground">
+                    {{
+                        props.resumen.proyectos === 1
+                            ? 'proyecto activo'
+                            : 'proyectos activos'
+                    }}
+                </span>
+            </span>
+
+            <span
+                v-if="props.resumen.incidentes"
+                class="inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50 px-3 py-1 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/50 dark:text-red-100"
+            >
+                <span class="font-semibold tabular-nums">{{
+                    props.resumen.incidentes
+                }}</span>
                 {{
                     props.resumen.incidentes === 1
                         ? 'incidente abierto'
                         : 'incidentes abiertos'
                 }}
-            </p>
+            </span>
 
-            <p
+            <span
                 v-if="props.resumen.sinChequear"
-                class="text-sm text-muted-foreground"
+                class="inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-sm text-muted-foreground"
             >
-                {{ props.resumen.sinChequear }} sin chequear todavía
-            </p>
+                <span class="font-semibold tabular-nums">{{
+                    props.resumen.sinChequear
+                }}</span>
+                sin chequear todavía
+            </span>
         </div>
 
         <!-- Una columna en el celular, que es donde más se mira esto. -->
