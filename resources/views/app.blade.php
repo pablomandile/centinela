@@ -74,10 +74,9 @@
             de favicons de Chrome mobile). Al cambiar un ícono hay que subir este
             número **y** el del manifest **y** el nombre de CACHE en sw.js.
         --}}
-        <link rel="icon" href="/favicon.ico" sizes="any">
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="icon" href="/icons/icon-192.png?v=1" type="image/png" sizes="192x192">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=1">
+        <link rel="icon" href="/favicon.ico?v=2" sizes="16x16 32x32 48x48">
+        <link rel="icon" href="/icons/icon-192.png?v=2" type="image/png" sizes="192x192">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
 
         @fonts
 

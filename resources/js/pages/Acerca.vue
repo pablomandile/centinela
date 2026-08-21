@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { Globe, Mail } from '@lucide/vue';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import LogoTexto from '@/components/LogoTexto.vue';
 import { Card, CardContent } from '@/components/ui/card';
 import { dashboard } from '@/routes';
 
@@ -13,8 +13,6 @@ defineOptions({
         ],
     },
 });
-
-const nombre = usePage().props.name;
 
 const EMAIL = 'pablo.mandile@gmail.com';
 const WEB = 'https://bioinfo.pablomandile.com.ar/pablo';
@@ -34,24 +32,8 @@ const WEB = 'https://bioinfo.pablomandile.com.ar/pablo';
         -->
         <Card class="max-w-2xl">
             <CardContent class="flex flex-col gap-6 sm:px-8">
-                <!--
-                    El logo va armado acá y no con `AppLogo`: ese componente está
-                    dimensionado para el encabezado de la sidebar (size-8 y texto
-                    chico), y agrandarlo con props lo complicaría para el único lugar
-                    donde de verdad se usa.
-                -->
-                <div class="flex items-center gap-3">
-                    <div
-                        class="flex aspect-square size-11 items-center justify-center rounded-lg bg-sidebar-primary"
-                    >
-                        <AppLogoIcon
-                            class="size-7 fill-current text-white dark:text-black"
-                        />
-                    </div>
-                    <span class="text-2xl font-bold tracking-tight">{{
-                        nombre
-                    }}</span>
-                </div>
+                <!-- El logo entero: acá hay lugar y es la página que habla de la app. -->
+                <LogoTexto class="w-56" />
 
                 <div class="flex flex-col gap-3 leading-relaxed">
                     <p>

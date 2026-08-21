@@ -207,9 +207,23 @@ si fue un `--forzar` antes de buscar el problema en los sitios.
   funciona perfecto y no se ve. Lo detecta
   `~/.claude/skills/overlays-al-navegar/scripts/revisar-overlays.mjs`, que ya encontró
   este bug una vez acá.
-- Al cambiar un ícono hay que tocar **tres** lugares: el nombre de `CACHE` en `sw.js`, el
-  `?v=` de los `<link rel="icon">` y el `?v=` del manifest. Los íconos se regeneran con
-  `php scripts/generar-iconos.php public/icons`.
+- La marca son **dos archivos** en `resources/img/`, que son los masters y no se tocan:
+  `logo.png` (el escudo con el faro, sin texto) y `logotexto.png` (escudo + "Centinela" +
+  bajada). Todo lo demás —favicon, `.ico`, íconos del manifest, apple-touch-icon y los
+  derivados livianos de `public/img/`— lo genera `php scripts/generar-iconos.php`, sin
+  argumentos. Editar un PNG de `public/` a mano se pierde en la próxima corrida.
+- **Los dos logos son transparentes y el faro es azul marino**, así que sobre el tema
+  oscuro la torre queda con menos de 2:1 de contraste y se ve un escudo vacío. Por eso
+  los íconos se generan **sobre blanco** y en la interfaz el logo va sobre una placa
+  clara (`LogoMarca` / `LogoTexto`). No es decoración: sin eso, en modo oscuro el logo
+  del login se lee a medias y el nombre "Centinela" del logotexto no se lee.
+- En la sidebar va la marca sola más el nombre en texto, **no** el logotexto: la sidebar
+  colapsa a una tira de 32 px y un logo apilado en tres niveles ahí no se lee.
+- Al cambiar un ícono hay que tocar **cuatro** lugares: el nombre de `CACHE` en `sw.js`,
+  el `?v=` de los `<link rel="icon">`, el `?v=` del manifest y el `?v=` de
+  `offline.html` —esa es la que se olvida, porque no la mira nadie hasta que se corta la
+  red—. Lo ata el test "los archivos de marca y las cuatro referencias van con la misma
+  versión".
 - Reutilizar `resources/js/components/ui/` (shadcn-vue sobre reka-ui) antes de escribir un
   componente nuevo.
 - Estado por props de Inertia + composables. **Sin Pinia.**

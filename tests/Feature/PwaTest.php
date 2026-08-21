@@ -63,6 +63,57 @@ it('el HTML enlaza el manifest y captura el evento de instalación antes de mont
         ->and($html)->toContain('beforeinstallprompt');
 });
 
+it('los archivos de marca y las cuatro referencias van con la misma versión', function () {
+    /*
+     * La trampa del skill `adaptar-a-pwa`, sección 6: un ícono vive en tres cachés
+     * que no se limpian solas (la del service worker, la HTTP y la base de favicons
+     * de Chrome mobile), y la única forma de saltearlas es cambiar la URL. O sea que
+     * al regenerar los íconos hay que subir el `?v=` **y** el nombre de CACHE, y si
+     * se sube uno solo el síntoma es que "el ícono viejo no se actualiza", sin error
+     * en ningún lado.
+     *
+     * Este test los ata: no verifica que la versión sea un número en particular,
+     * verifica que las cuatro digan lo mismo.
+     */
+    $version = function (string $contenido, string $patron): string {
+        expect($contenido)->toMatch($patron);
+        preg_match($patron, $contenido, $coincidencias);
+
+        return $coincidencias[1];
+    };
+
+    $enElHtml = $version(
+        $this->get(route('login'))->assertOk()->getContent(),
+        '#/icons/icon-192\.png\?v=(\d+)#',
+    );
+
+    expect($version((string) file_get_contents(public_path('manifest.webmanifest')), '#/icons/icon-192\.png\?v=(\d+)#'))
+        ->toBe($enElHtml)
+        ->and($version((string) file_get_contents(public_path('sw.js')), "#const CACHE = 'centinela-v(\d+)'#"))
+        ->toBe($enElHtml)
+        // La pantalla de sin conexión es la cuarta, y la que se olvida: no la toca
+        // nadie hasta que se corta la red.
+        ->and($version((string) file_get_contents(public_path('offline.html')), '#/icons/icon-192\.png\?v=(\d+)#'))
+        ->toBe($enElHtml);
+});
+
+it('la marca existe en los dos formatos y el favicon no es el de Laravel', function () {
+    // Los dos derivados que usa la interfaz, generados por scripts/generar-iconos.php.
+    expect(file_exists(public_path('img/logo.png')))->toBeTrue()
+        ->and(file_exists(public_path('img/logotexto.png')))->toBeTrue()
+        // iOS busca este solo en la raíz, no en /icons.
+        ->and(file_exists(public_path('apple-touch-icon.png')))->toBeTrue()
+        // El kit deja un favicon.svg con el logo de Laravel; si vuelve a aparecer,
+        // gana sobre el .ico en los navegadores que soportan SVG.
+        ->and(file_exists(public_path('favicon.svg')))->toBeFalse();
+
+    // Un .ico con PNG adentro: cabecera de 6 bytes, tipo 1 = ícono.
+    $ico = (string) file_get_contents(public_path('favicon.ico'));
+
+    expect(unpack('vreservado/vtipo/vcantidad', $ico))
+        ->toMatchArray(['reservado' => 0, 'tipo' => 1, 'cantidad' => 3]);
+});
+
 it('el .htaccess saca de la caché al service worker y al manifest', function () {
     /*
      * Es el arreglo de la trampa del CDN: los estáticos salen con max-age de siete

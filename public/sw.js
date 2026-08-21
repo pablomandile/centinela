@@ -13,7 +13,7 @@
  * acá, el `?v=` de los `<link rel="icon">` y el `?v=` del manifest. Ver el skill
  * `adaptar-a-pwa`, sección 6.
  */
-const CACHE = 'centinela-v1';
+const CACHE = 'centinela-v2';
 const SIN_CONEXION = '/offline.html';
 
 self.addEventListener('install', (event) => {
