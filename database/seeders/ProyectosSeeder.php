@@ -35,11 +35,18 @@ class ProyectosSeeder extends Seeder
     }
 
     /**
-     * Estado verificado por HTTP el 2026-08-19.
+     * Estado verificado por HTTP el 2026-08-19 y corregido el 2026-08-21.
      *
-     * Los cuatro inactivos del final no resuelven hoy: o no están publicados o
-     * viven en un dominio que todavía no conocemos. Se cargan igual para tenerlos
-     * a la vista, en gris y sin generar chequeos ni avisos.
+     * De los cuatro que se cargaron inactivos porque "no resolvían", tres sí estaban
+     * publicados y el error era la URL supuesta: **no todo es
+     * `<slug>.pablomandile.com.ar`**. milarepa tiene dominio propio y el subdominio de
+     * meditarenzn lleva el nombre entero. La fuente de verdad es el server
+     * (`ls ~/domains` y el `APP_URL` del .env de cada proyecto), no el nombre de la
+     * carpeta local.
+     *
+     * Queda uno inactivo, docbrainer, y esta vez es de verdad: no tiene carpeta en el
+     * hosting. Se carga igual para tenerlo a la vista, en gris y sin generar chequeos
+     * ni avisos.
      *
      * @return list<array<string, mixed>>
      */
@@ -178,34 +185,36 @@ class ProyectosSeeder extends Seeder
             [
                 'nombre' => 'Meditar en Zona Norte',
                 'slug' => 'meditarenzn',
-                'url' => 'https://meditarenzn.pablomandile.com.ar',
+                // El subdominio lleva el nombre entero, no el slug corto de la carpeta
+                // local: `meditarenzn.pablomandile.com.ar` no existe.
+                'url' => 'https://meditarenzonanorte.pablomandile.com.ar',
                 'repo_url' => 'https://github.com/pablomandile/meditarenzonanorte',
                 'usa_inertia' => true,
                 'es_pwa' => false,
                 'tiene_bundle' => true,
-                'activo' => false,
-                'notas' => 'No resuelve al 2026-08-19: revisar en qué dominio quedó.',
+                'notas' => 'En línea. Desde el server contesta en 58 ms; desde afuera puede tardar mucho más (13 s medidos el 2026-08-21).',
             ],
             [
                 'nombre' => 'Milarepa',
                 'slug' => 'milarepa',
-                'url' => 'https://milarepa.pablomandile.com.ar',
+                // Dominio propio, como agendaflex: no es un subdominio de
+                // pablomandile.com.ar. Vive en ~/domains/milarepa.com.ar/milarepa.
+                'url' => 'https://milarepa.com.ar',
                 'repo_url' => 'https://github.com/pablomandile/milarepa',
                 'usa_inertia' => true,
                 'es_pwa' => false,
                 'tiene_bundle' => true,
-                'activo' => false,
-                'notas' => 'No resuelve al 2026-08-19. Es el proyecto con más documentación (12 archivos .md).',
+                'notas' => 'En línea. Es el proyecto con más documentación (12 archivos .md).',
             ],
             [
                 'nombre' => 'Dharmify',
                 'slug' => 'dharmify',
                 'url' => 'https://dharmify.pablomandile.com.ar',
-                'usa_inertia' => false,
-                'es_pwa' => false,
-                'tiene_bundle' => false,
-                'activo' => false,
-                'notas' => 'Carpeta local vacía: todavía no existe.',
+                'usa_inertia' => true,
+                // Sí, PWA: la detección del 2026-08-21 le encontró un manifest válido.
+                'es_pwa' => true,
+                'tiene_bundle' => true,
+                'notas' => 'En línea, con login. La carpeta local está vacía: el fuente vive solo en el server.',
             ],
         ];
     }
