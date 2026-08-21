@@ -10,9 +10,10 @@ use Illuminate\Http\JsonResponse;
 /**
  * El único endpoint público de Centinela.
  *
- * Existe porque **Centinela no puede vigilarse a sí mismo**: si se cae, no hay
- * nadie que mande el mail. Un monitor externo gratuito (healthchecks.io,
- * UptimeRobot) pega acá y avisa si esto deja de contestar.
+ * Centinela está cargado como proyecto y se audita a sí mismo, pero **no puede
+ * avisar su propia caída**: el aviso lo dispara el cron, y si esto se cayó del todo
+ * el cron tampoco corre. Un monitor externo gratuito (healthchecks.io, UptimeRobot)
+ * pega acá y avisa si deja de contestar.
  *
  * No expone nada sensible: cuántos proyectos hay, cuántos incidentes abiertos y
  * cuándo fue el último chequeo. Ni nombres, ni URLs, ni mensajes.

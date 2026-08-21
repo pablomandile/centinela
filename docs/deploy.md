@@ -174,9 +174,16 @@ ve sin SSH en `https://centinela.pablomandile.com.ar/salud`, en
 
 ## El monitor externo
 
-Centinela no puede avisar que se cayó estando caído. `GET /salud` es público y
-contesta JSON sin datos sensibles: alcanza con apuntarle un monitor gratuito
-(healthchecks.io, UptimeRobot) cada 15 minutos.
+Centinela está cargado como proyecto y se audita a sí mismo, así que las seis sondas
+le corren igual que a los demás. Eso cubre más de lo que parece: el cron corre por
+CLI y la web es otro camino, o sea que un deploy que devuelve 500, un docroot que
+quedó apuntando a otra carpeta o el CDN comiéndose el `Vary` se detectan con el
+scheduler perfectamente sano.
+
+Lo que **no** cubre es "está todo caído": ahí no corre el cron y no hay quien mande
+el mail. Para eso `GET /salud` es público y contesta JSON sin datos sensibles:
+alcanza con apuntarle un monitor gratuito (healthchecks.io, UptimeRobot) cada 15
+minutos.
 
 Lo que conviene vigilar no es solo el código 200: si el scheduler se murió, la app
 sigue contestando 200 y `minutos_desde_el_ultimo_chequeo` se estira. Un monitor que

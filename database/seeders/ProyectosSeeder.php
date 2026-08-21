@@ -19,8 +19,11 @@ use Illuminate\Database\Seeder;
  * tiene manifest válido, y el manifest de localia era un falso positivo (el hosting
  * contesta la home con 200 para cualquier ruta).
  *
- * Centinela **no se incluye a sí mismo**: no puede avisar que se cayó estando
- * caído. Para eso está la ruta /salud y un monitor externo.
+ * Centinela **sí se incluye a sí mismo**, y no es una contradicción: lo que no puede
+ * es avisar que se cayó estando caído —para eso está /salud y el monitor externo—,
+ * pero el cron corre por CLI y la web es otro camino. Un deploy que rompe el front
+ * door deja el scheduler sano y la web en 500, el docroot apuntando a otra carpeta o
+ * el CDN comiéndose el `Vary`: eso sí se detecta, y es de lo que más pasa acá.
  */
 class ProyectosSeeder extends Seeder
 {
@@ -168,6 +171,16 @@ class ProyectosSeeder extends Seeder
                 'es_pwa' => false,
                 'tiene_bundle' => false,
                 'notas' => 'HTML y applets de Java de 1998. No tiene build ni service worker.',
+            ],
+            [
+                'nombre' => 'Centinela',
+                'slug' => 'centinela',
+                'url' => 'https://centinela.pablomandile.com.ar',
+                'repo_url' => 'https://github.com/pablomandile/centinela',
+                'usa_inertia' => true,
+                'es_pwa' => true,
+                'tiene_bundle' => true,
+                'notas' => 'Esta app. Se audita a sí misma; para "está caído" hace falta el monitor externo sobre /salud.',
             ],
 
             // ---- Todavía no publicados (o en un dominio que no conocemos) ----
