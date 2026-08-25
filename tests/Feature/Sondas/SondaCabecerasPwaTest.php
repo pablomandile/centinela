@@ -59,6 +59,86 @@ it('advierte cuando el service worker sale con la caché de siete días del CDN'
         ->and($resultado->mensaje)->toContain('service worker');
 });
 
+/**
+ * El mismo /sw.js contestando dos cosas distintas: lo que entrega el borde y lo
+ * que contesta el origen. Se separan por el query string, que es justamente el
+ * único modo de saltear al nodo (un `Cache-Control: no-cache` en el pedido no
+ * alcanza: medido contra Hostinger, el nodo devuelve su copia igual).
+ */
+function swDelBordeYDelOrigen(string $cacheDelBorde, string $cacheDelOrigen, string $age = '514886'): void
+{
+    Http::fake([
+        'ejemplo.test/manifest.webmanifest' => Http::response(
+            json_encode(['name' => 'App', 'icons' => [
+                ['src' => '/icons/icon-192.png', 'sizes' => '192x192'],
+                ['src' => '/icons/icon-512.png', 'sizes' => '512x512'],
+            ]]),
+            200,
+            ['Content-Type' => 'application/manifest+json', 'Cache-Control' => 'no-cache'],
+        ),
+        'ejemplo.test/sw.js?*' => Http::response('fetch', 200, ['Cache-Control' => $cacheDelOrigen]),
+        'ejemplo.test/sw.js' => Http::response('fetch', 200, [
+            'Cache-Control' => $cacheDelBorde,
+            'x-hcdn-cache-status' => 'HIT',
+            'Age' => $age,
+        ]),
+        'ejemplo.test/icons/*' => Http::response('png'),
+    ]);
+}
+
+it('no manda a arreglar el .htaccess cuando el origen ya está bien y lo viejo es la copia del CDN', function () {
+    /*
+     * El caso de mantreando: el .htaccess ya estaba corregido y un nodo del CDN
+     * seguía entregando la copia de seis días antes. Mirando solo la cabecera,
+     * esto es idéntico a un origen mal configurado, y manda a tocar un archivo
+     * que ya está bien.
+     */
+    swDelBordeYDelOrigen(
+        cacheDelBorde: 'public, max-age=604800',
+        cacheDelOrigen: 'no-cache, must-revalidate, max-age=0',
+    );
+
+    $resultado = app(SondaCabecerasPwa::class)->ejecutar(proyecto(['es_pwa' => true]));
+
+    expect($resultado->estado)->toBe(EstadoChequeo::Advertencia)
+        ->and($resultado->mensaje)->toContain('ya sale bien del origen')
+        // 604800 - 514886 = 89914 s, o sea 25 horas.
+        ->and($resultado->mensaje)->toContain('vence en 25 horas')
+        ->and($resultado->mensaje)->not->toContain('lo va a servir viejo por días');
+
+    Http::assertSent(fn ($pedido) => str_contains($pedido->url(), 'centinela='));
+});
+
+it('sigue avisando cuando el CDN entrega una copia vieja y el origen también está mal', function () {
+    swDelBordeYDelOrigen(
+        cacheDelBorde: 'public, max-age=604800',
+        cacheDelOrigen: 'public, max-age=604800',
+    );
+
+    $resultado = app(SondaCabecerasPwa::class)->ejecutar(proyecto(['es_pwa' => true]));
+
+    expect($resultado->estado)->toBe(EstadoChequeo::Advertencia)
+        ->and($resultado->mensaje)->toContain('lo va a servir viejo por días')
+        ->and($resultado->mensaje)->not->toContain('ya sale bien del origen');
+});
+
+it('no le pregunta al origen si la respuesta no salió de ninguna caché', function () {
+    /*
+     * El pedido de más solo se justifica cuando hay una copia intermedia que
+     * pueda estar mintiendo. Sin `Age` ni `x-hcdn-cache-status` la cabecera es la
+     * del origen y no hay nada que confirmar: en hosting compartido las ráfagas
+     * de pedidos se estrangulan, así que este no es un detalle de estilo.
+     *
+     * `Http::preventStrayRequests()` ya haría fallar el test si preguntara —no
+     * hay stub con query—, pero se afirma explícito para que se lea la intención.
+     */
+    pwaResponde(cacheSw: 'public, max-age=604800');
+
+    app(SondaCabecerasPwa::class)->ejecutar(proyecto(['es_pwa' => true]));
+
+    Http::assertNotSent(fn ($pedido) => str_contains($pedido->url(), 'centinela='));
+});
+
 it('advierte cuando el manifest se sirve con el MIME equivocado', function () {
     pwaResponde(cabecerasManifest: ['Content-Type' => 'text/plain', 'Cache-Control' => 'no-cache']);
 

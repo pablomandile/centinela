@@ -141,7 +141,7 @@ Dos consecuencias que ya están resueltas y no hay que volver a pensar:
 O sea: si el tablero muestra de golpe media docena de "tarda 8 segundos", mirá primero
 si fue un `--forzar` antes de buscar el problema en los sitios.
 
-### Tres trampas que ya costaron un rato
+### Cuatro trampas que ya costaron un rato
 
 1. **`X-Inertia-Version` en la respuesta lo agregó inertia-laravel 3.** La mitad de los
    proyectos de la cuenta sigue en 2 y no lo manda. La señal universal de "esto es
@@ -154,6 +154,26 @@ si fue un `--forzar` antes de buscar el problema en los sitios.
    **no** es hijo de `Illuminate\Support\Carbon`. Tipar un parámetro de fecha con esa
    clase tira `TypeError`, el ejecutor lo atrapa como "falla" y el chequeo queda en rojo
    sin explicación. En firmas de fecha va `CarbonInterface`.
+4. **Una cabecera que llega del CDN puede describir el pasado.** Con
+   `x-hcdn-cache-status: HIT` lo que se lee es la copia que ese nodo guardó hace `Age`
+   segundos, no lo que el sitio contesta hoy. Un origen mal configurado y una copia vieja
+   de un origen ya corregido **se ven idénticos**, y se resuelven distinto: uno es tocar
+   el `.htaccess`, el otro es purgar desde hPanel o esperar. `SondaCabecerasPwa` los
+   separa preguntándole al origen con un query string único.
+
+   Tres cosas de ese chequeo que no hay que "simplificar":
+
+   - **El query string es obligatorio.** Medido contra Hostinger, un
+     `Cache-Control: no-cache` en el **pedido** no saltea al nodo: sigue devolviendo su
+     copia igual.
+   - **Tiene que cambiar en cada corrida.** Uno fijo se cachearía él mismo y volvería a
+     mentir, que es justo el problema que resuelve.
+   - **El pedido de más sale solo si la cabecera ya vino mal.** En un sitio sano no se
+     ejecuta nunca, y eso importa por lo de las ráfagas en hosting compartido.
+
+   Pasó con mantreando: el `.htaccess` ya estaba arreglado y uno de los cuatro nodos
+   seguía sirviendo la copia de seis días antes, así que el aviso aparecía y desaparecía
+   según dónde cayera el chequeo.
 
 ## Documentación
 

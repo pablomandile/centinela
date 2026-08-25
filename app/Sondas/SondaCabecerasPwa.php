@@ -47,7 +47,8 @@ class SondaCabecerasPwa implements Sonda
             );
         }
 
-        $sw = $this->pedir($proyecto->urlDe('/sw.js'));
+        $urlSw = $proyecto->urlDe('/sw.js');
+        $sw = $this->pedir($urlSw);
 
         $detalle = [
             'manifest' => [
@@ -55,11 +56,13 @@ class SondaCabecerasPwa implements Sonda
                 'content_type' => $manifest->cabecera('content-type'),
                 'cache_control' => $manifest->cabecera('cache-control'),
                 'cdn' => $manifest->cabecera('x-hcdn-cache-status'),
+                'age' => $manifest->cabecera('age'),
             ],
             'sw' => [
                 'codigo' => $sw->codigo(),
                 'cache_control' => $sw->cabecera('cache-control'),
                 'cdn' => $sw->cabecera('x-hcdn-cache-status'),
+                'age' => $sw->cabecera('age'),
             ],
         ];
 
@@ -85,8 +88,8 @@ class SondaCabecerasPwa implements Sonda
         }
 
         $avisos = array_filter([
-            $this->avisoDeCache('El manifest', $manifest),
-            $this->avisoDeCache('El service worker', $sw),
+            $this->avisoDeCache('El manifest', $manifest, $proyecto->urlDe($rutaManifest)),
+            $this->avisoDeCache('El service worker', $sw, $urlSw),
             $this->avisoDeMime($manifest),
             $this->avisoDeTamanos($iconos),
         ]);
@@ -186,16 +189,108 @@ class SondaCabecerasPwa implements Sonda
 
     /**
      * El CDN cachea siete días lo que no diga lo contrario.
+     *
+     * Con una vuelta más, que es la que evita mandar a arreglar algo ya
+     * arreglado: la cabecera que se lee puede venir de una copia que el borde
+     * guardó **antes** de que el sitio se corrigiera, y entonces describe cómo
+     * estaba el sitio hace `Age` segundos, no cómo está ahora. Las dos
+     * situaciones se ven idénticas desde afuera y se resuelven distinto —una es
+     * tocar el `.htaccess`, la otra es purgar o esperar—, así que cuando la
+     * respuesta salió de una caché se le pregunta al origen.
+     *
+     * Pasó de verdad con mantreando: el `.htaccess` ya estaba corregido y un
+     * nodo de los cuatro seguía sirviendo la copia de seis días antes, así que
+     * el aviso aparecía y desaparecía según a qué nodo cayera el chequeo.
      */
-    private function avisoDeCache(string $qué, Pedido $pedido): ?string
+    private function avisoDeCache(string $qué, Pedido $pedido, string $url): ?string
     {
         $cache = (string) $pedido->cabecera('cache-control');
 
-        if (str_contains($cache, 'no-cache') || str_contains($cache, 'no-store') || str_contains($cache, 'max-age=0')) {
+        if ($this->prohibeGuardar($cache)) {
             return null;
         }
 
+        if ($this->salioDeUnaCache($pedido) && $this->prohibeGuardar($this->cacheDelOrigen($url))) {
+            return "{$qué} ya sale bien del origen, pero un nodo del CDN todavía entrega una copia vieja («{$cache}»)"
+                .$this->cuantoLeFalta($pedido).'. No hay nada que tocar en el sitio: se purga el CDN desde hPanel o se espera.';
+        }
+
         return "{$qué} sale con «".($cache ?: 'sin Cache-Control').'»: el CDN lo va a servir viejo por días.';
+    }
+
+    private function prohibeGuardar(string $cache): bool
+    {
+        return str_contains($cache, 'no-cache')
+            || str_contains($cache, 'no-store')
+            || str_contains($cache, 'max-age=0');
+    }
+
+    /**
+     * ¿La contestó el origen, o la sirvió una caché compartida?
+     *
+     * `Age` es la señal del RFC y vale para cualquier CDN; el header propio de
+     * Hostinger se mira además porque es el que aparece en esta cuenta y es
+     * explícito. Sin ninguno de los dos se asume que contestó el origen, que es
+     * lo conservador: se emite el aviso de siempre.
+     */
+    private function salioDeUnaCache(Pedido $pedido): bool
+    {
+        return mb_strtoupper((string) $pedido->cabecera('x-hcdn-cache-status')) === 'HIT'
+            || (int) $pedido->cabecera('age') > 0;
+    }
+
+    /**
+     * Qué contesta el origen, salteando al borde.
+     *
+     * Hace falta una URL que la caché no pueda tener guardada: medido contra
+     * Hostinger, un `Cache-Control: no-cache` en el **pedido** no alcanza, el
+     * nodo sigue devolviendo su copia igual. El query string cambia en cada
+     * corrida a propósito — uno fijo terminaría cacheado él también y volvería a
+     * mentir, que es exactamente el problema que se está resolviendo.
+     *
+     * Es un pedido de más, y por eso sale solo cuando la cabecera ya vino mal:
+     * en un sitio sano esto no se ejecuta nunca. Importa por lo que dice
+     * `CLAUDE.md` sobre las ráfagas en hosting compartido.
+     */
+    private function cacheDelOrigen(string $url): string
+    {
+        $separador = str_contains($url, '?') ? '&' : '?';
+
+        return (string) $this->pedir($url.$separador.'centinela='.now()->getTimestamp())
+            ->cabecera('cache-control');
+    }
+
+    /**
+     * Cuánto le queda a la copia del borde antes de vencer sola.
+     *
+     * Sale del `max-age` que declara esa misma copia menos su `Age`. Si falta
+     * cualquiera de los dos se devuelve vacío: es preferible un aviso sin plazo
+     * a uno con un plazo inventado.
+     */
+    private function cuantoLeFalta(Pedido $pedido): string
+    {
+        if (preg_match('/max-age=(\d+)/', (string) $pedido->cabecera('cache-control'), $coincidencia) !== 1) {
+            return '';
+        }
+
+        $faltan = (int) $coincidencia[1] - (int) $pedido->cabecera('age');
+
+        return $faltan > 0 ? ', que vence en '.$this->enPalabras($faltan) : '';
+    }
+
+    private function enPalabras(int $segundos): string
+    {
+        $horas = (int) round($segundos / 3600);
+
+        if ($horas < 1) {
+            return 'menos de una hora';
+        }
+
+        if ($horas < 48) {
+            return $horas === 1 ? 'una hora' : "{$horas} horas";
+        }
+
+        return (int) round($segundos / 86400).' días';
     }
 
     private function avisoDeMime(Pedido $manifest): ?string
